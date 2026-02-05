@@ -1,1 +1,25 @@
+# Python
 __pycache__/
+.pytest_cache
+*.py[cod]
+*.so
+*.egg-info/
+optimization.c
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv
+.env
+uv.lock
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Project specific
+sanitize.log
