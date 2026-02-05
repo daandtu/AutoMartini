@@ -550,14 +550,28 @@ def voronoi_atoms_new(cgbead_coords, heavyatom_coords, allatom_coords, molecule)
 
                     if hbead is not None: # found hydrogen atom connected to 
                         aa_partitioning[hydrogen]=hbead
+                        break
+            
+            # If no bead was found for this atom, assign it to the closest bead
+            if at not in aa_partitioning:
+                closest_bead = -1
+                closest_dist = float('inf')
+                for b in range(len(cgbead_coords)):
+                    dist = np.linalg.norm(cgbead_coords[b] - allatom_coords[at])
+                    if dist < closest_dist:
+                        closest_dist = dist
+                        closest_bead = b
+                if closest_bead != -1:
+                    aa_partitioning[at] = closest_bead
 
     #compute COG while taking into account hydrogens
     bead_coord={}
     for atom in range(len(allatom_coords)):
-        bead=aa_partitioning[atom]
-        if bead not in bead_coord.keys(): 
-            bead_coord[bead]=[]
-        bead_coord[bead].append(allatom_coords[atom])
+        if atom in aa_partitioning:
+            bead=aa_partitioning[atom]
+            if bead not in bead_coord.keys(): 
+                bead_coord[bead]=[]
+            bead_coord[bead].append(allatom_coords[atom])
 
     bead_cog=[]
     for bead, coords in sorted(bead_coord.items()):
@@ -651,14 +665,28 @@ def voronoi_atoms_old(cgbead_coords, heavyatom_coords, allatom_coords, molecule)
 
                     if hbead is not None: # found hydrogen atom connected to 
                         aa_partitioning[hydrogen]=hbead
+                        break
+            
+            # If no bead was found for this atom, assign it to the closest bead
+            if at not in aa_partitioning:
+                closest_bead = -1
+                closest_dist = float('inf')
+                for b in range(len(cgbead_coords)):
+                    dist = np.linalg.norm(cgbead_coords[b] - allatom_coords[at])
+                    if dist < closest_dist:
+                        closest_dist = dist
+                        closest_bead = b
+                if closest_bead != -1:
+                    aa_partitioning[at] = closest_bead
 
     #compute COG while taking into account hydrogens
     bead_coord={}
     for atom in range(len(allatom_coords)):
-        bead=aa_partitioning[atom]
-        if bead not in bead_coord.keys(): 
-            bead_coord[bead]=[]
-        bead_coord[bead].append(allatom_coords[atom])
+        if atom in aa_partitioning:
+            bead=aa_partitioning[atom]
+            if bead not in bead_coord.keys(): 
+                bead_coord[bead]=[]
+            bead_coord[bead].append(allatom_coords[atom])
 
     bead_cog=[]
     for bead, coords in sorted(bead_coord.items()):
