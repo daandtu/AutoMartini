@@ -29,6 +29,9 @@ and LICENSE files.
 
 from sys import exit
 
+from subprocess import check_output
+import platform
+
 from auto_martiniM3._version import __version__
 
 from .common import *
@@ -1357,7 +1360,6 @@ def smi2alogps(forcepred, smi, wc_log_p, bead, converted_smi, real_smi, logp_fil
     ### AutoM3 ###
     if not logp_file:
         logp_file = os.path.join(os.path.dirname(__file__), 'logP_smi.dat')
-    found_smi = False
     if bead != "MOL":
         logP_data = {}
         if converted_smi:
@@ -1379,59 +1381,60 @@ def smi2alogps(forcepred, smi, wc_log_p, bead, converted_smi, real_smi, logp_fil
         for smiles, logp in logP_data.items():
             if smiles == smi:
                 log_p = float(logp)
-                found_smi = True
                 return (log_p, "")
-                #break
-
-    if not found_smi:
-        if converted_smi:
-            smi=real_smi
-        req = ""
-        soup = ""
+    if converted_smi:
+        smi=real_smi
+    alogps_dir = os.path.join(os.path.dirname(__file__), "ochem-tools", "alogps")
+    if os.path.exists(alogps_dir):
         try:
-            session = requests.session()
-            logger.debug("Calling http://vcclab.org/web/alogps/calc?SMILES=" + str(smi))
-            req = session.get(
-                "http://vcclab.org/web/alogps/calc?SMILES=" + str(smi.replace("#", "%23"))
-            )
-        except:
-            print("Error. Can't reach vcclab.org to estimate free energy.")
-            exit(1)
-        try:
-            doc = BeautifulSoup(req.content, "lxml")
-        except Exception:
-            raise
-        try:
-            soup = doc.prettify()
-        except:
-            print("Error with BeautifulSoup prettify")
-            exit(1)
-        found_mol_1 = False
-        log_p = None
-        for line in soup.split("\n"):
-            line = line.split()
-            if "mol_1" in line:
-                log_p = float(line[line.index("mol_1") + 1])
-                found_mol_1 = True
-                break
-        if not found_mol_1:
-            # If we're forcing a prediction, use Wildman-Crippen
-            if forcepred:
-                if trial:
-                    wrn = (
-                        "; Warning: bead ID "
-                        + str(bead)
-                        + " predicted from Wildman-Crippen. Fragment "
-                        + str(smi)
-                        + "\n"
-                    )
-                    sys.stderr.write(wrn)
-                log_p = wc_log_p
+            if platform.system() == 'Linux':
+                alogps_executable = os.path.join(alogps_dir, 'alogps-linux')
+            elif platform.system() == 'Darwin':
+                alogps_executable = os.path.join(alogps_dir, 'alogps-darwin')
+            elif 'aarch64' in platform.machine():
+                alogps_executable = os.path.join(alogps_dir, 'alogps-aarch64')
             else:
-                print("ALOGPS can't predict fragment: %s" % smi)
-                exit(1)
-        logger.debug("logp value: %7.4f" % log_p)
-        return (convert_log_k(log_p),"; ALOGPS defined bead")
+                raise Exception(f"Unsupported platform: {platform.system()} - {platform.machine()}")
+            cmd = f'{alogps_executable} -s "{smi}"'
+            output = check_output(cmd, shell=True, text=True, cwd=alogps_dir)
+            log_p = float(output.split('\n\n\n')[1].split('logP:')[1].split('(')[0].strip())
+            return (convert_log_k(log_p), "; ALOGPS defined bead")
+        except Exception as e:
+            print(f"An error occurred while running ALOGPS: {e}")
+    req = ""
+    soup = ""
+    try:
+        session = requests.session()
+        logger.debug("Calling http://vcclab.org/web/alogps/calc?SMILES=" + str(smi))
+        req = session.get(
+            "http://vcclab.org/web/alogps/calc?SMILES="
+            + str(smi.replace("#", "%23"))
+        )
+    except:
+        raise RuntimeError("Error. Can't reach vcclab.org to estimate free energy.")
+    doc = BeautifulSoup(req.content, "lxml")
+    soup = doc.prettify()
+    for line in soup.split("\n"):
+        line = line.split()
+        if "mol_1" in line:
+            log_p = float(line[line.index("mol_1") + 1])
+            return (convert_log_k(log_p), "; ALOGPS defined bead")
+    # If we're forcing a prediction, use Wildman-Crippen
+    if forcepred:
+        if trial:
+            wrn = (
+                "; Warning: bead ID "
+                + str(bead)
+                + " predicted from Wildman-Crippen. Fragment "
+                + str(smi)
+                + "\n"
+            )
+            sys.stderr.write(wrn)
+        log_p = wc_log_p
+    else:
+        raise RuntimeError("Failed to predict logP value for fragment: %s" % smi)
+    logger.debug("logp value: %7.4f" % log_p)
+    return (convert_log_k(log_p),"; ALOGPS defined bead")
 
 def convert_log_k(log_k):
     """Convert log_{10}K to free energy (in kJ/mol)"""

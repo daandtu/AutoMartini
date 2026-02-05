@@ -1,0 +1,3 @@
+[submodule "auto_martiniM3/ochem-tools"]
+	path = auto_martiniM3/ochem-tools
+	url = https://github.com/openochem/ochem-external-tools.git
