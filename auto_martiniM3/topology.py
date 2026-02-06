@@ -69,10 +69,8 @@ def gen_molecule_smi(smi):
     logger.debug("Entering gen_molecule_smi()")
     errval = 0
     if "." in smi:
-        logger.warning("Error. Only one molecule may be provided.")
-        logger.warning(smi)
         errval = 4
-        exit(1)
+        raise ValueError(f"Error. Only one molecule may be provided, got {smi}")
     # If necessary, adjust smiles for Aromatic Ns
     # Redirect current stderr in log file
     stderr_fd = None
@@ -122,8 +120,7 @@ def gen_molecule_sdf(sdf):
     logger.debug("Entering gen_molecule_sdf()")
     suppl = Chem.SDMolSupplier(sdf)
     if len(suppl) > 1:
-        print("Error. Only one molecule may be provided.")
-        exit(1)
+        raise ValueError(f"Error. Only one molecule may be provided, got {sdf}")
     molecule = ""
     for molecule in suppl:
         if molecule is None:
@@ -489,12 +486,12 @@ def print_atoms(molname,forcepred,cgbeads,molecule,hbonda,hbondd,partitioning,ri
 
             hbond_a_flag = 0
             for at in hbonda:
-                if partitioning[at] == bead:
+                if partitioning.get(at) == bead:
                     hbond_a_flag = 1
                     break
             hbond_d_flag = 0
             for at in hbondd:
-                if partitioning[at] == bead:
+                if partitioning.get(at) == bead:
                     hbond_d_flag = 1
                     break
 

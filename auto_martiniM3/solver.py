@@ -211,52 +211,54 @@ class Cg_molecule:
                         if a in ring_atoms_flat:
                             cg_beads_rings[i]=a
                     
-
-            self.cg_bead_names, bead_types, _, _ = topology.print_atoms(
-                molname,
-                forcepred,
-                cg_beads,
-                molecule,
-                hbond_a,
-                hbond_d,
-                self.atom_partitioning,
-                ring_atoms,
-                ring_atoms_flat,
-                logp_file, # AutoM3 new argument
-                True,
-            )
-
-            if not self.cg_bead_names:
-                success = False
-            # Check additivity between fragments and entire molecule
-            if not check_additivity(forcepred, bead_types, molecule, mol_smi):
-                success = False
-            
-            # Bond list
             try:
-                bond_list, const_list , _= topology.print_bonds(
+                self.cg_bead_names, bead_types, _, _ = topology.print_atoms(
+                    molname,
+                    forcepred,
                     cg_beads,
-                    cg_beads_rings,
                     molecule,
+                    hbond_a,
+                    hbond_d,
                     self.atom_partitioning,
-                    self.cg_bead_coords,
-                    bead_types, # AutoM3 change
                     ring_atoms,
-                    trial=True,
+                    ring_atoms_flat,
+                    logp_file, # AutoM3 new argument
+                    True,
                 )
-            except Exception:
-                raise
 
-            # I added errval below from the master branch ... not sure where to use this anywhere, possibly leave for debugging
-            if not ring_atoms and (len(bond_list) + len(const_list)) >= len(self.cg_bead_names):
-                errval = 3
+                if not self.cg_bead_names:
+                    success = False
+                # Check additivity between fragments and entire molecule
+                if not check_additivity(forcepred, bead_types, molecule, mol_smi):
+                    success = False
+                
+                # Bond list
+                try:
+                    bond_list, const_list , _= topology.print_bonds(
+                        cg_beads,
+                        cg_beads_rings,
+                        molecule,
+                        self.atom_partitioning,
+                        self.cg_bead_coords,
+                        bead_types, # AutoM3 change
+                        ring_atoms,
+                        trial=True,
+                    )
+                except Exception:
+                    raise
+
+                # I added errval below from the master branch ... not sure where to use this anywhere, possibly leave for debugging
+                if not ring_atoms and (len(bond_list) + len(const_list)) >= len(self.cg_bead_names):
+                    errval = 3
+                    success = False
+                if (len(bond_list) + len(const_list)) < len(self.cg_bead_names) - 1:
+                    errval = 5
+                    success = False
+                if len(cg_beads) != len(self.cg_bead_names):
+                    success = False
+                    errval = 8
+            except ValueError:
                 success = False
-            if (len(bond_list) + len(const_list)) < len(self.cg_bead_names) - 1:
-                errval = 5
-                success = False
-            if len(cg_beads) != len(self.cg_bead_names):
-                success = False
-                errval = 8
             
             if success:
                 header_write = topology.print_header(molname, mol_smi)
